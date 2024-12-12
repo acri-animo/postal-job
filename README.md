@@ -1,4 +1,4 @@
-# Fivem Postal Job (Sandbox Framework)
+# Fivem Postal Job (Sandbox/Mythic Framework)
 
 A FiveM postal job script for SandboxRP version of Mythic framework.
 
