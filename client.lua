@@ -5,6 +5,7 @@ local eventHandlers = {}
 local _entities = {}
 local _state
 
+-- Players can collect mail from any of these props anywhere in the city
 local postalBoxes = {
     `prop_postbox_01a`,
     `prop_postbox_02a`,
@@ -13,7 +14,9 @@ local postalBoxes = {
     `prop_postbox_02b`
 }
 
+-- Startup event
 AddEventHandler("Labor:Client:Setup", function()
+    -- Ped to start job
     PedInteraction:Add("PostalJob", GetHashKey("s_m_m_postal_01"), vector3(78.886, 112.563, 80.168), 164.319, 25.0, {
         {
             icon = "handshake-angle",
@@ -54,6 +57,10 @@ AddEventHandler("Labor:Client:Setup", function()
     }, "envelopes-bulk")
 end)
 
+------------------
+-- Events/Handlers
+------------------
+
 RegisterNetEvent("Postal:Client:OnDuty", function(joiner, time)
     _joiner = joiner
     DeleteWaypoint()
@@ -71,6 +78,7 @@ RegisterNetEvent("Postal:Client:OnDuty", function(joiner, time)
                     event = "Postal:Client:MailDeposit",
                     data = "Postal",
                     isEnabled = function(data, entity)
+                        -- Prevents player from targeting a mailbox they have already collected from
                         return not _entities[entity.entity]
                             and MailObject == nil
                     end,                    
@@ -86,10 +94,10 @@ RegisterNetEvent("Postal:Client:OnDuty", function(joiner, time)
             MailObject = nil
         end
 
-        -- Show progress bar when delivering mail
+        -- Progress bar when collecting mail
         Progress:Progress({
             name = "mail_deposit",
-            duration = math.random(20, 25) * 1000, -- Random duration between 5 and 10 seconds
+            duration = math.random(20, 25) * 1000,
             label = "Collecting Mail",
             useWhileDead = false,
             canCancel = true,
@@ -104,11 +112,12 @@ RegisterNetEvent("Postal:Client:OnDuty", function(joiner, time)
             },
         }, function(cancelled)
             if not cancelled then
-                -- Ensure the network ID is sent correctly
+                -- Sends the entity ID to server to track each mailbox a player collects (preventing someone from collecting from the same mailbox over and over)
                 local mailboxEntityId = entity.entity
                 Callbacks:ServerCallback("Postal:MailDeposit", { mailboxEntity = mailboxEntityId }, function(s)
                     if s then
                         LocalPlayer.state.carryingMail = true
+                        -- This tracks the mailboxes player collects on client side to prevent targeting of a mailbox they already collected
                         _entities[mailboxEntityId] = true
 
                         if next(_entities) ~= nil then
@@ -129,8 +138,8 @@ RegisterNetEvent("Postal:Client:OnDuty", function(joiner, time)
     end)
 
     eventHandlers["spawn-van"] = AddEventHandler("Postal:Client:PostalSpawn", function()
-        Callbacks:ServerCallback("Postal:PostalSpawn", {}, function(entity)
-            if not entity then
+        Callbacks:ServerCallback("Postal:PostalSpawn", {}, function(animo)
+            if not animo then
                 Notification:Error("Attempting to spawn postal van you pepega.")
                 return
             end
@@ -153,8 +162,8 @@ RegisterNetEvent("Postal:Client:OnDuty", function(joiner, time)
 end)
 
 AddEventHandler("Postal:Client:StartJob", function()
-    Callbacks:ServerCallback("Postal:StartJob", _joiner, function(state)
-        if not state then
+    Callbacks:ServerCallback("Postal:StartJob", _joiner, function(animo)
+        if not animo then
             Notification:Error("Unable To Start Job")
         end
     end)

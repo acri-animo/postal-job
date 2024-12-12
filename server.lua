@@ -4,12 +4,14 @@ local _joiners = {}
 local _Postal = {}
 local _usedMailboxes = {}
 
-local _lootTable = {
+local _lootTable = { -- I didn't put much thought into this, just placeholder items
     "plastic",
     "iron_bar",
 }
 
+-- Startup event
 AddEventHandler("Labor:Server:Startup", function()
+    -- Callback to start job
     Callbacks:RegisterServerCallback("Postal:StartJob", function(source, data, cb)
         if _Postal[data] == nil then
             _Postal[data] = { state = 0 }
@@ -24,6 +26,7 @@ AddEventHandler("Labor:Server:Startup", function()
         end
     end)
 
+    -- Callback to spawn postal truck
     local _isSpawningVan = false
     Callbacks:RegisterServerCallback("Postal:PostalSpawn", function(source, data, cb)
         if _isSpawningVan then
@@ -40,10 +43,11 @@ AddEventHandler("Labor:Server:Startup", function()
                 _isSpawningVan = false
             
                 cb(veh)
-            end, false) -- false here to spawn it non-networked            
+            end, false)          
         end
     end)
 
+    -- Callback to despawn postal truck
     Callbacks:RegisterServerCallback("Postal:PostalSpawnRemove", function(source, data, cb)
         if _joiners[source] ~= nil and _Postal[_joiners[source]].van ~= nil then
             if _Postal[_joiners[source]].state == 3 then
@@ -64,6 +68,7 @@ AddEventHandler("Labor:Server:Startup", function()
         end
     end)
 
+    -- Callback to collect mail (I know it says deposit, but it's the same thing in this context, might expand on this job later)
     Callbacks:RegisterServerCallback("Postal:MailDeposit", function(source, data, cb)
         if _joiners[source] ~= nil and _Postal[_joiners[source]].state == 2 then
             -- Ensure mailboxes table is initialized
@@ -83,6 +88,7 @@ AddEventHandler("Labor:Server:Startup", function()
     
             local char = Fetch:CharacterSource(source)
             if char:GetData("TempJob") == _JOB then
+                -- This sets a random chance to get an item from the loot table at the top of this script
                 local luck = math.random(100)
                 if luck >= 50 then
                     Inventory:AddItem(char:GetData("SID"), _lootTable[math.random(#_lootTable)], 1, {}, 1)
@@ -91,7 +97,7 @@ AddEventHandler("Labor:Server:Startup", function()
                 if Labor.Offers:Update(_joiners[source], _JOB, 1, true) then
                     _Postal[_joiners[source]].tasks = (_Postal[_joiners[source]].tasks or 0) + 1
     
-                    -- Mark the mailbox as used using the entity ID
+                    -- Mark the mailbox as used using the entity ID (this is to prevent the same mailbox from collected/looted multiple times, even if player relogs)
                     _usedMailboxes[source][mailboxEntityId] = true
     
                     if _Postal[_joiners[source]].tasks >= 1 then
@@ -109,6 +115,7 @@ AddEventHandler("Labor:Server:Startup", function()
         end
     end)    
 
+    -- Callback to turn in job
     Callbacks:RegisterServerCallback("Postal:TurnIn", function(source, data, cb)
         if _joiners[source] ~= nil and (_Postal[_joiners[source]].tasks or 0) >= 1 then
             local char = Fetch:CharacterSource(source)
@@ -126,6 +133,10 @@ AddEventHandler("Labor:Server:Startup", function()
         end
     end)
 end)
+
+------------------
+-- Events/Handlers
+------------------
 
 AddEventHandler("Postal:Server:OnDuty", function(joiner, members, isWorkgroup)
     _joiners[joiner] = joiner
